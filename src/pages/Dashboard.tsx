@@ -1,6 +1,7 @@
 import { Package, FileText, Users, Mail, TrendingUp, ShoppingCart } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
+import { NavLink } from 'react-router-dom';
 
 export default function Dashboard() {
   const stats = [
@@ -67,22 +68,22 @@ export default function Dashboard() {
 
         <Card title="Quick Actions">
           <div className="grid grid-cols-2 gap-4">
-            <button className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
+            <NavLink to="/products" className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
               <Package size={32} className="mb-2 text-[#D0A19B] group-hover:text-white" />
-              <span className="font-medium text-[#4B5563] group-hover:text-white">Add Product</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
+              <span className="font-medium text-[#4B5563] group-hover:text-white">View Products</span>
+            </NavLink>
+            <NavLink to="/orders" className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
               <ShoppingCart size={32} className="mb-2 text-[#D0A19B] group-hover:text-white" />
               <span className="font-medium text-[#4B5563] group-hover:text-white">View Orders</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
+            </NavLink>
+            <NavLink to="/users" className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
               <Users size={32} className="mb-2 text-[#D0A19B] group-hover:text-white" />
               <span className="font-medium text-[#4B5563] group-hover:text-white">Manage Users</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
+            </NavLink>
+            <NavLink to="/leads" className="flex flex-col items-center justify-center p-6 bg-[#F6DFD7] rounded-lg hover:bg-[#D0A19B] hover:text-white transition-colors group">
               <Mail size={32} className="mb-2 text-[#D0A19B] group-hover:text-white" />
               <span className="font-medium text-[#4B5563] group-hover:text-white">View Leads</span>
-            </button>
+            </NavLink>
           </div>
         </Card>
       </div>

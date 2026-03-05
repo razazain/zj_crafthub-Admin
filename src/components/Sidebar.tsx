@@ -16,16 +16,21 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const menuItems = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/categories', label: 'Categories', icon: FolderTree },
-  { path: '/products', label: 'Products', icon: Package },
-  { path: '/cart', label: 'Cart', icon: ShoppingCart },
-  { path: '/orders', label: 'Orders', icon: FileText },
-  { path: '/users', label: 'All Users', icon: Users },
-  { path: '/leads', label: 'All Leads', icon: Mail },
-  { path: '/wishlist', label: 'Wishlist', icon: Heart },
-];
+// Menu Items organized for best UX
+const menuItems = {
+  sales: [
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/orders', label: 'Orders', icon: FileText },
+    { path: '/cart', label: 'Cart', icon: ShoppingCart },
+    { path: '/wishlist', label: 'Wishlist', icon: Heart },
+  ],
+  management: [
+    { path: '/products', label: 'Products', icon: Package },
+    { path: '/categories', label: 'Categories', icon: FolderTree },
+    { path: '/users', label: 'All Users', icon: Users },
+    { path: '/leads', label: 'All Leads', icon: Mail },
+  ],
+};
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
@@ -56,29 +61,66 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
 
           {/* Menu */}
-          <nav className="flex-1 overflow-y-auto py-4 space-y-1">
-            {menuItems.map((item) => {
-              const Icon = item.icon;
+          <nav className="flex-1 overflow-y-auto py-4">
+            {/* Sales Section */}
+            <div className="px-6 mb-4">
+              <span className="text-xs font-semibold text-gray-400 uppercase">
+                Sales
+              </span>
+              <div className="mt-2 space-y-1">
+                {menuItems.sales.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        `flex items-center space-x-3 px-3 py-2 transition-colors rounded-r-md
+                        ${
+                          isActive
+                            ? 'bg-[#F6DFD7] text-[#D0A19B] border-r-4 border-[#D0A19B]'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`
+                      }
+                    >
+                      <Icon size={20} />
+                      <span className="font-medium">{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
 
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  onClick={onClose}
-                  className={({ isActive }) =>
-                    `flex items-center space-x-3 px-6 py-3 transition-colors
-                    ${
-                      isActive
-                        ? 'bg-[#F6DFD7] text-[#D0A19B] border-r-4 border-[#D0A19B]'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`
-                  }
-                >
-                  <Icon size={20} />
-                  <span className="font-medium">{item.label}</span>
-                </NavLink>
-              );
-            })}
+            {/* Management Section */}
+            <div className="px-6">
+              <span className="text-xs font-semibold text-gray-400 uppercase">
+                Management
+              </span>
+              <div className="mt-2 space-y-1">
+                {menuItems.management.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        `flex items-center space-x-3 px-3 py-2 transition-colors rounded-r-md
+                        ${
+                          isActive
+                            ? 'bg-[#F6DFD7] text-[#D0A19B] border-r-4 border-[#D0A19B]'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`
+                      }
+                    >
+                      <Icon size={20} />
+                      <span className="font-medium">{item.label}</span>
+                    </NavLink>
+                  );
+                })}
+              </div>
+            </div>
           </nav>
         </div>
       </aside>
