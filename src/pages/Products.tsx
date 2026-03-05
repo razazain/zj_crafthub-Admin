@@ -397,7 +397,7 @@ export default function Products() {
     { 
       key: 'price', 
       label: 'Price',
-      render: (price: number) => `$${price.toFixed(2)}`
+      render: (price: number) => `Rs. ${price.toFixed(2)}`
     },
     {
       key: 'isBestSeller',
