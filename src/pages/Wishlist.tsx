@@ -266,9 +266,7 @@ export default function Wishlist() {
         }
       );
       
-      const data: ApiResponse = await res.json();
-      console.log('Fetched wishlist data:', data);
-      
+      const data: ApiResponse = await res.json();      
       if (data.success) {
         // Filter and validate wishlist data (allow null/string values)
         const validWishlistItems = (data.wishlists || [])

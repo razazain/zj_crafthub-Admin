@@ -112,7 +112,6 @@ export default function Users() {
         },
       });
       const data: UsersApiResponse = await res.json();
-      console.log('Fetched users:', data);
 
       if (data.users && Array.isArray(data.users)) {
         setUsers(data.users);
@@ -159,8 +158,6 @@ export default function Users() {
         },
       });
       const data = await res.json();
-      console.log('Single user details:', data);
-      // The response can be the user object directly (no wrapper)
       if (data && data._id) {
         return data as User;
       }

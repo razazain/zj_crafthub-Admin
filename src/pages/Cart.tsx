@@ -201,7 +201,6 @@ export default function Cart() {
       );
       
       const data = await res.json();
-      console.log('Fetched carts data:', data);
       
       if (data.success) {
         // Filter and validate carts data

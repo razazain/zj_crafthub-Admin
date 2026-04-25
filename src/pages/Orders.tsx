@@ -220,7 +220,6 @@ export default function Orders() {
       );
       
       const data = await res.json();
-      console.log('Fetched orders data:', data);
       
       if (data.success) {
         // Filter and validate orders data

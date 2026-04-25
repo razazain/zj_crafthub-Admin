@@ -106,7 +106,6 @@ export default function ContactMessages() {
         },
       });
       const data: ApiResponse = await res.json();
-      console.log('Fetched contact messages:', data);
 
       if (data.success && Array.isArray(data.contacts)) {
         setMessages(data.contacts);

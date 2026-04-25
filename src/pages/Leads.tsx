@@ -100,7 +100,6 @@ export default function Leads() {
         },
       });
       const data: ApiResponse = await res.json();
-      console.log('Fetched leads:', data);
 
       if (data.success && Array.isArray(data.leads)) {
         setLeads(data.leads);
