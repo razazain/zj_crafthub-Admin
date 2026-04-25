@@ -1,55 +1,489 @@
-import { Search } from 'lucide-react';
-import { useState } from 'react';
+import { Search, ChevronLeft, ChevronRight, X, User, Mail, Phone, Calendar, BadgeCheck, ShoppingBag } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import Swal from 'sweetalert2';
 import Card from '../components/Card';
 import Table from '../components/Table';
+import Button from '../components/Button';
+import { API_URL } from '../config';
+import { getToken } from '../utils/auth';
 
+/* -------------------- Toast -------------------- */
+const showToast = (
+  title: string,
+  message: string,
+  icon: 'success' | 'error' | 'warning'
+) => {
+  Swal.fire({
+    title,
+    text: message,
+    icon,
+    toast: true,
+    position: 'bottom-end',
+    showConfirmButton: false,
+    timer: 4000,
+    timerProgressBar: true,
+  });
+};
+
+/* -------------------- Types -------------------- */
+interface ProfileImage {
+  url: string;
+  alt: string;
+  isVerified?: string;
+}
+
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  phoneNumber?: string;
+  role?: string;
+  profileImage?: ProfileImage;
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  authProvider?: string;
+  socialId?: string;
+}
+
+interface UsersApiResponse {
+  count: number;
+  users: User[];
+}
+
+/* -------------------- Component -------------------- */
 export default function Users() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
 
-  const users = [
-    { id: 1, name: 'John Doe', email: 'john@example.com', phone: '+1234567890', orders: 5, joined: '2023-12-01', status: 'Active' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', phone: '+1234567891', orders: 3, joined: '2023-12-05', status: 'Active' },
-    { id: 3, name: 'Bob Johnson', email: 'bob@example.com', phone: '+1234567892', orders: 8, joined: '2023-11-20', status: 'Active' },
-    { id: 4, name: 'Alice Brown', email: 'alice@example.com', phone: '+1234567893', orders: 2, joined: '2024-01-02', status: 'Active' },
-    { id: 5, name: 'Charlie Wilson', email: 'charlie@example.com', phone: '+1234567894', orders: 6, joined: '2023-12-15', status: 'Inactive' },
-  ];
+  // Modal state
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
+  // Pagination (client side)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const paginatedUsers = filteredUsers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  /* -------------------- Helper Functions -------------------- */
+  const getSafeDate = (dateString?: string): string => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
+  const getFullDate = (dateString?: string): string => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return 'Invalid Date';
+    }
+  };
+
+  /* -------------------- Fetch All Users -------------------- */
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/auth/users`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data: UsersApiResponse = await res.json();
+      console.log('Fetched users:', data);
+
+      if (data.users && Array.isArray(data.users)) {
+        setUsers(data.users);
+        setFilteredUsers(data.users);
+      } else {
+        setUsers([]);
+        setFilteredUsers([]);
+        showToast('Error', 'Failed to load users', 'error');
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      showToast('Error', 'Failed to load users', 'error');
+      setUsers([]);
+      setFilteredUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  // Search filter (client side)
+  useEffect(() => {
+    const query = searchQuery.toLowerCase();
+    const filtered = users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        (user.phoneNumber && user.phoneNumber.includes(query))
+    );
+    setFilteredUsers(filtered);
+    setCurrentPage(1); // reset to first page on search
+  }, [searchQuery, users]);
+
+  /* -------------------- Fetch Single User (for modal) -------------------- */
+  const fetchUserDetails = async (userId: string): Promise<User | null> => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/auth/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+      console.log('Single user details:', data);
+      // The response can be the user object directly (no wrapper)
+      if (data && data._id) {
+        return data as User;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user details:', error);
+      return null;
+    }
+  };
+
+  /* -------------------- Handlers -------------------- */
+  const handleView = async (userRecord: Record<string, unknown>) => {
+    const user = userRecord as unknown as User;
+    setModalLoading(true);
+    setShowUserModal(true);
+    try {
+      // Fetch fresh details to get all fields
+      const detailedUser = await fetchUserDetails(user._id);
+      setSelectedUser(detailedUser);
+    } catch (error) {
+      console.error('Error loading user details:', error);
+      showToast('Error', 'Failed to load user details', 'error');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
+  /* -------------------- Table Columns -------------------- */
   const columns = [
-    { key: 'id', label: 'ID' },
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'phone', label: 'Phone' },
-    { key: 'orders', label: 'Total Orders' },
-    { key: 'joined', label: 'Joined Date' },
     {
-      key: 'status',
-      label: 'Status',
+      key: 'name',
+      label: 'User',
+      render: (value: unknown, row: Record<string, unknown>) => {
+        const user = row as unknown as User;
+        const profileImage = user.profileImage?.url;
+        return (
+          <div className="flex items-center gap-3">
+            {profileImage ? (
+              <img
+                src={profileImage}
+                alt={user.profileImage?.alt || user.name}
+                className="w-8 h-8 rounded-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  const parent = (e.target as HTMLImageElement).parentElement;
+                  if (parent) {
+                    parent.innerHTML =
+                      '<div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center"><User size={14} class="text-gray-500" /></div>';
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                <User size={14} className="text-gray-500" />
+              </div>
+            )}
+            <div>
+              <p className="font-medium text-gray-900">{user.name}</p>
+              <p className="text-xs text-gray-500">{user.email}</p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'phoneNumber',
+      label: 'Phone',
+      render: (value: unknown) => {
+        const phone = value as string;
+        return phone ? <span>{phone}</span> : <span className="text-gray-400">—</span>;
+      },
+    },
+    {
+      key: 'role',
+      label: 'Role',
       render: (value: unknown) => (
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-          value === 'Active' ? 'text-green-600 bg-green-100' : 'text-gray-600 bg-gray-100'
-        }`}>
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-purple-100 text-purple-700 capitalize">
           {String(value)}
         </span>
       ),
     },
+    {
+      key: 'isVerified',
+      label: 'Verified',
+      render: (value: unknown) => (
+        <span
+          className={`px-2 py-1 text-xs font-medium rounded-full ${
+            value ? 'text-green-600 bg-green-100' : 'text-gray-600 bg-gray-100'
+          }`}
+        >
+          {value ? 'Verified' : 'Not Verified'}
+        </span>
+      ),
+    },
+    {
+      key: 'createdAt',
+      label: 'Joined',
+      render: (value: unknown) => <span>{getSafeDate(value as string)}</span>,
+    },
   ];
 
-  const handleView = (user: Record<string, unknown>) => {
-    console.log('View user:', user);
+  /* -------------------- Pagination Component -------------------- */
+  const PaginationFooter = () => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex items-center justify-between border-t px-4 py-3 sm:px-6">
+        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-gray-700">
+              Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+              <span className="font-medium">
+                {Math.min(currentPage * itemsPerPage, filteredUsers.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredUsers.length}</span> users
+            </p>
+          </div>
+          <div>
+            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1 || loading}
+                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="sr-only">Previous</span>
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+              </button>
+
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    disabled={loading}
+                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                      currentPage === pageNum
+                        ? 'z-10 bg-[#d0a19b] text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d0a19b]'
+                        : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || loading}
+                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="sr-only">Next</span>
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  const handleEdit = (user: Record<string, unknown>) => {
-    console.log('Edit user:', user);
-  };
+  /* -------------------- User Modal Component -------------------- */
+  const UserModal = () => {
+    if (!selectedUser && !modalLoading) return null;
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <User className="text-[#d0a19b]" size={24} />
+              <h2 className="text-xl font-semibold text-gray-800">User Details</h2>
+            </div>
+            <button
+              onClick={() => setShowUserModal(false)}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="p-6">
+            {modalLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d0a19b] mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading user details...</p>
+                </div>
+              </div>
+            ) : selectedUser ? (
+              <div className="space-y-6">
+                {/* Profile Header */}
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-32 h-32 bg-gradient-to-br from-[#d0a19b] to-[#e8c3bd] rounded-full p-1 mb-4">
+                    <div className="w-full h-full bg-white rounded-full overflow-hidden">
+                      {selectedUser.profileImage?.url ? (
+                        <img
+                          src={selectedUser.profileImage.url}
+                          alt={selectedUser.profileImage.alt || selectedUser.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User size={48} className="text-[#d0a19b]" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <h3 className="text-2xl font-bold text-gray-800">{selectedUser.name}</h3>
+
+                  {/* Verification & Role Badges */}
+                  <div className="flex gap-2 mt-2">
+                    {selectedUser.isVerified && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+                        <BadgeCheck size={16} />
+                        Verified
+                      </span>
+                    )}
+                    {selectedUser.role && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                        <ShoppingBag size={16} />
+                        {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* User Details Grid */}
+                <div className="grid grid-cols-1 gap-4 bg-gray-50 rounded-xl p-6">
+                  {/* Email */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-[#d0a19b]/10 rounded-full flex items-center justify-center">
+                      <Mail size={20} className="text-[#d0a19b]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500">Email Address</p>
+                      <p className="font-medium text-gray-800">{selectedUser.email}</p>
+                    </div>
+                  </div>
+
+                  {/* Phone */}
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-[#d0a19b]/10 rounded-full flex items-center justify-center">
+                      <Phone size={20} className="text-[#d0a19b]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500">Phone Number</p>
+                      <p className="font-medium text-gray-800">
+                        {selectedUser.phoneNumber || 'Not provided'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Member Since */}
+                  {selectedUser.createdAt && (
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-[#d0a19b]/10 rounded-full flex items-center justify-center">
+                        <Calendar size={20} className="text-[#d0a19b]" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-500">Member Since</p>
+                        <p className="font-medium text-gray-800">{getFullDate(selectedUser.createdAt)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Auth Provider (if available) */}
+                  {selectedUser.authProvider && (
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-[#d0a19b]/10 rounded-full flex items-center justify-center">
+                        <ShoppingBag size={20} className="text-[#d0a19b]" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-500">Authentication Provider</p>
+                        <p className="font-medium text-gray-800 capitalize">{selectedUser.authProvider}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <User className="mx-auto w-12 h-12 text-gray-400 mb-3" />
+                <p className="text-gray-500">User not found</p>
+              </div>
+            )}
+          </div>
+
+          <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 rounded-b-xl">
+            <Button
+              onClick={() => setShowUserModal(false)}
+              className="w-full bg-gradient-to-r from-[#d0a19b] to-[#e8c3bd] text-white border-0"
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-[#4B5563]">All Users</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-[#4B5563]">All Users</h1>
+        <div className="text-sm text-gray-500">Total: {users.length} users</div>
+      </div>
 
       <Card>
         <div className="mb-4">
@@ -57,21 +491,47 @@ export default function Users() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="Search by name, email or phone..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#D0A19B]"
+              disabled={loading}
             />
           </div>
         </div>
 
-        <Table
-          columns={columns}
-          data={filteredUsers}
-          onView={handleView}
-          onEdit={handleEdit}
-        />
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d0a19b] mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading users...</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table
+                columns={columns}
+                data={paginatedUsers as Record<string, unknown>[]}
+                onView={handleView}
+                // No onEdit prop – view only
+              />
+            </div>
+
+            {filteredUsers.length > 0 && <PaginationFooter />}
+
+            {filteredUsers.length === 0 && !loading && (
+              <div className="text-center py-10">
+                <User className="mx-auto w-12 h-12 text-gray-400 mb-3" />
+                <p className="text-gray-500">No users found</p>
+              </div>
+            )}
+          </>
+        )}
       </Card>
+
+      {/* User Details Modal */}
+      {showUserModal && <UserModal />}
     </div>
   );
 }

@@ -29,6 +29,7 @@ const menuItems = {
     { path: '/categories', label: 'Categories', icon: FolderTree },
     { path: '/users', label: 'All Users', icon: Users },
     { path: '/leads', label: 'All Leads', icon: Mail },
+    { path: '/contactus', label: 'Contactus Messages', icon: Mail },
   ],
 };
 

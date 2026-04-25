@@ -11,6 +11,7 @@ import Orders from './pages/Orders';
 import Users from './pages/Users';
 import Leads from './pages/Leads';
 import Wishlist from './pages/Wishlist';
+import Contactus from './pages/contactus';
 
 import AdminLayout from './components/AdminLayout';
 import ProtectedRoute from './routes/ProtectedRoute';
@@ -42,6 +43,7 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="leads" element={<Leads />} />
           <Route path="wishlist" element={<Wishlist />} />
+          <Route path="contactus" element={<Contactus />} />
         </Route>
 
         {/* 404 */}
